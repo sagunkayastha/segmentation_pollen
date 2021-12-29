@@ -1,0 +1,13 @@
+coco-viewer/
+output/
+data/
+detectron2/
+out_predict/
+segmentation_sessions/
+train_detectron/
+*.onnx
+*.png
+*.json
+*.jpg
+*.zip
+.ipynb_checkpoints/
