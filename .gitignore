@@ -1,10 +1,18 @@
+# folders
 coco-viewer/
 output/
 data/
 detectron2/
 out_predict/
+Final_json/
 segmentation_sessions/
 train_detectron/
+__pycache__
+full_data/
+#jupyter n
+.ipynb_checkpoints/
+
+#filetypes
 *.onnx
 *.png
 *.json

@@ -28,11 +28,11 @@ class Predictor:
     def define_model(self):
         self.cfg = get_cfg()
         # self.cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml")
-        self.cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
-        
+        # self.cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
+        self.cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml"))
         self.cfg.DATALOADER.NUM_WORKERS = 2
         self.cfg.MODEL.WEIGHTS = self.weights_path  # path to the model we just trained
-        self.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.4   # set a custom testing threshold
+        self.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.45   # set a custom testing threshold
         
         self.prepare_configs()
         self.predictor = DefaultPredictor(self.cfg)
@@ -85,39 +85,44 @@ class Predictor:
         thickness = 1
         isClosed = False
 
-        map_label ={'1':'POL',
-            '0':'ANOM',
-            '2':'OTHPAR',
-            '3':'MOL'}
+        map_label ={'3':'POL',
+            '1':'ANOM',
+            '0':'OTHPAR',
+            '2':'MOL'}
         
-        map_color ={'POL':(255, 0, 0),
-            'ANOM':(255, 255, 0),
-            'OTHPAR':(255, 0, 255),
-            'MOL':(0, 0, 255)}
+        map_color ={'POL':(255, 0, 0), # BLUE
+            'ANOM':(0,0 , 255), # RED
+            'OTHPAR':(0, 255, 0), # GREEN
+            'MOL':(0, 255, 255)} # Yellow
 
         for points,box in zip(pol_points,boxes):
             
             
             label,x1,y1,x2,y2 = box
+            # print(label)
             label = map_label[str(label)]
 
             color = map_color[str(label)]
             im =cv2.polylines(im, points, isClosed, color, thickness)
-            # cv2.putText(im,label, (x1,y1), cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
-            pl= cv2.rectangle(im, (x1,y1), (x2,y2),(0, 255, 0), thickness=1)
+            cv2.putText(im,label, (x1,y1), cv2.FONT_HERSHEY_SIMPLEX, .3, 255)
+            # pl= cv2.rectangle(im, (x1,y1), (x2,y2),(0, 255, 0), thickness=1)
             
     
         
         img_name = img_path.split('/')[-1]
-       
+        os.makedirs('out_predict',exist_ok=True)
         cv2.imwrite('out_predict/'+img_name,im)
         
+if __name__ == '__main__':
+    weights = '/home/laanta/sagun/segmentation/output/model_jan2.pth'
+    img_path = '/home/laanta/sagun/segmentation/data/images/0ed9aa9a-1347-4188-b396-77aa0dd90749.png'
+    obj= Predictor(weights)
 
-weights = '/home/laanta/sagun/segmentation/output/model_final.pth'
-img_path = '/home/laanta/sagun/segmentation/data/images/0ed9aa9a-1347-4188-b396-77aa0dd90749.png'
-obj= Predictor(weights)
-
-for img in os.listdir('data/images'):
-    print(img)
-    img_path = os.path.join('data/images/',img)
-    out =obj.predict(img_path,plot=True)
+    for img in sorted(os.listdir('test')):
+        if '.png' in img:
+            
+            # img = '/home/laanta/sagun/segmentation/full_data/images/6c7accb8-f78a-4960-b68e-6106f11f36ff.png'
+            print(img)
+            img_path = os.path.join('test',img)
+            out =obj.predict(img_path,plot=True)
+            # exit()
