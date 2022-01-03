@@ -23,6 +23,7 @@ class Predictor:
         self.weights_path = weights_path
         self.num_classes =4
         self.define_model()
+        self.nms_thresh = 0.6
         pass
 
     def define_model(self):
@@ -32,23 +33,59 @@ class Predictor:
         self.cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml"))
         self.cfg.DATALOADER.NUM_WORKERS = 2
         self.cfg.MODEL.WEIGHTS = self.weights_path  # path to the model we just trained
-        self.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.45   # set a custom testing threshold
+        self.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.2   # set a custom testing threshold
         
         self.prepare_configs()
+        
         self.predictor = DefaultPredictor(self.cfg)
     
     def prepare_configs(self):
          # no metrics implemented for this dataset
         cwd = os.getcwd()
         
-        self.cfg.SOLVER.MAX_ITER = (
-            300
-        )  # 300 iterations seems good enough, but you can certainly train longer
         self.cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = (
-            128
+            512
         )  # faster,  dataset
         self.cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.num_classes  # 3 classes (data, fig, hazelnut)
+    
+    def nms(self,boxes,confs,min_mode=False):
+        nms_thresh=0.6
+        boxes = np.array(boxes)
+        confs = np.array(confs)
+        order = confs.argsort()[::-1]
+        x1 = boxes[:, 0]
+        y1 = boxes[:, 1]
+        x2 = boxes[:, 2]
+        y2 = boxes[:, 3]
+        areas = (x2 - x1) * (y2 - y1)
+        keep = []
         
+        while order.size > 0:
+            idx_self = order[0]
+            idx_other = order[1:]
+
+            keep.append(idx_self)
+
+            xx1 = np.maximum(x1[idx_self], x1[idx_other])
+            yy1 = np.maximum(y1[idx_self], y1[idx_other])
+            xx2 = np.minimum(x2[idx_self], x2[idx_other])
+            yy2 = np.minimum(y2[idx_self], y2[idx_other])
+
+            w = np.maximum(0.0, xx2 - xx1)
+            h = np.maximum(0.0, yy2 - yy1)
+            inter = w * h
+
+            if min_mode:
+                over = inter / np.minimum(areas[order[0]], areas[order[1:]])
+            else:
+                over = inter / (areas[order[0]] + areas[order[1:]] - inter)
+
+            inds = np.where(over <= self.nms_thresh)[0]
+            order = order[inds + 1]
+
+        return keep
+
+
     def predict(self,img_path,plot=False):
         
         im = cv2.imread(img_path) 
@@ -73,6 +110,12 @@ class Predictor:
             x1,y1,x2,y2 = box.astype('int')
             output_boxes.append([label,x1,y1,x2,y2])
 
+        keep = self.nms(output_boxes,scores)
+        if len(keep)>0:
+            output_boxes= np.array(output_boxes)[keep]
+            pol_points = np.array(pol_points)[keep]
+            scores= np.array(scores)[keep]
+            
         
         if plot:
             self.pol_plot(im,pol_points,output_boxes,img_path)
@@ -105,7 +148,7 @@ class Predictor:
             color = map_color[str(label)]
             im =cv2.polylines(im, points, isClosed, color, thickness)
             cv2.putText(im,label, (x1,y1), cv2.FONT_HERSHEY_SIMPLEX, .3, 255)
-            # pl= cv2.rectangle(im, (x1,y1), (x2,y2),(0, 255, 0), thickness=1)
+            pl= cv2.rectangle(im, (x1,y1), (x2,y2),(255, 255, 255), thickness=1)
             
     
         
@@ -115,14 +158,15 @@ class Predictor:
         
 if __name__ == '__main__':
     weights = '/home/laanta/sagun/segmentation/output/model_jan2.pth'
-    img_path = '/home/laanta/sagun/segmentation/data/images/0ed9aa9a-1347-4188-b396-77aa0dd90749.png'
+    folder_path = '/home/laanta/sagun/yolo/inference/test'
     obj= Predictor(weights)
 
-    for img in sorted(os.listdir('test')):
+    for img in sorted(os.listdir(folder_path)):
         if '.png' in img:
             
             # img = '/home/laanta/sagun/segmentation/full_data/images/6c7accb8-f78a-4960-b68e-6106f11f36ff.png'
             print(img)
-            img_path = os.path.join('test',img)
+            img_path = os.path.join(folder_path,img)
+            print(img_path)
             out =obj.predict(img_path,plot=True)
             # exit()

@@ -76,8 +76,6 @@ class create_json:
             
             segpoints, bboxpoints= self.model.predict(img_path,plot=False)
             
-            
-            
             for i , j in zip(segpoints,bboxpoints):
                 newdict2 = {}
                 newdict2['iscrowd'] = 0
