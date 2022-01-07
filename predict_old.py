@@ -7,7 +7,7 @@ import numpy as np
 import os, json, cv2, random
 
 import time
-import uuid
+
 # import some common detectron2 utilities
 from detectron2 import model_zoo
 from detectron2.engine import DefaultPredictor
@@ -19,14 +19,13 @@ from imantics import Polygons, Mask
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
-
 class Predictor:
-
+    
     def __init__(self,weights_path):
         self.weights_path = weights_path
         self.num_classes =4
         self.define_model()
-        self.nms_thresh = 0.5
+        self.nms_thresh = 0.6
         pass
 
     def define_model(self):
@@ -36,8 +35,8 @@ class Predictor:
         self.cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml"))
         self.cfg.DATALOADER.NUM_WORKERS = 2
         self.cfg.MODEL.WEIGHTS = self.weights_path  # path to the model we just trained
-        self.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.4   # set a custom testing threshold
-        # self.cfg.MODEL.ROI_HEADS.NMS_THRESH_TEST =0.01
+        self.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.2   # set a custom testing threshold
+        
         self.prepare_configs()
         
         self.predictor = DefaultPredictor(self.cfg)
@@ -88,104 +87,6 @@ class Predictor:
 
         return keep
 
-    
-
-    def pad_image(self,image, size=(256, 256)):
-        h, w, c = image.shape
-        pad_l = pad_r = int((size[1]-w)/2)
-        pad_t = pad_b = int((size[0]-h)/2)
-        img = cv2.copyMakeBorder(image.copy(), pad_t, pad_b,
-                                pad_l, pad_r, cv2.BORDER_CONSTANT)
-        img = cv2.resize(img, size)
-        return img
-
-
-    def remove_padding(self,img, tol=0):
-        # img is 2D or 3D image data
-        # tol  is tolerance
-        mask = img > tol
-        if img.ndim == 3:
-            mask = mask.all(2)
-        m, n = mask.shape
-        mask0, mask1 = mask.any(0), mask.any(1)
-        col_start, col_end = mask0.argmax(), n-mask0[::-1].argmax()
-        row_start, row_end = mask1.argmax(), m-mask1[::-1].argmax()
-        return img[row_start:row_end, col_start:col_end]
-
-
-
-    def predict(self,img_path,plot=False):
-        
-        im = cv2.imread(img_path) 
-        outputs = self.predictor(im)
-        
-        
-        pred_classes = outputs['instances'].pred_classes.to("cpu").numpy()
-        pred_boxes = outputs['instances'].pred_boxes.to("cpu")
-        scores = outputs['instances'].scores.to("cpu").numpy()
-        mask_array = outputs['instances'].pred_masks.to("cpu").numpy()
-        output_boxes =[]
-        
-
-
-        # pol_points=[]
-        # output_boxes = []
-        # for i in mask_array:
-        #     polygons = Mask(i).polygons()
-        #     pol_points.append(polygons.points)
-
-        for box,label in zip(pred_boxes,pred_classes):
-            box = box.cpu().detach().numpy()
-            
-            # label = map_label[str(label)]
-            x1,y1,x2,y2 = box.astype('int')
-            output_boxes.append([label,x1,y1,x2,y2])
-
-        keep = self.nms(output_boxes,scores)
-        if len(keep)>0:
-            output_boxes = np.array(output_boxes)[keep]
-            mask_array = np.array(mask_array)[keep]
-            pred_classes = np.array(pred_classes)[keep]
-        
-        # Remove Boxes inside
-        keep2 = self.check_inner(output_boxes)
-        if len(keep2) > 0:
-            output_boxes = np.array(output_boxes)[keep2]
-            mask_array = np.array(mask_array)[keep2]
-            pred_classes = np.array(pred_classes)[keep2]
-
-        map_label = {'3': 'POL',
-                     '1': 'ANOM',
-                     '0': 'OTHPAR',
-                     '2': 'MOL'}
-            
-        print(mask_array.shape)
-        for mask,pred_class in zip(mask_array,pred_classes):
-
-            label = map_label[str(pred_class)]
-            if label == 'POL' or label == 'MOL':
-            # mask = mask
-                masked = cv2.bitwise_and(im, im, mask=mask.astype("uint8"))
-                tmp_ = self.remove_padding(masked)
-                output = self.pad_image(tmp_)
-
-                if label == 'POL':
-                    udi = str(uuid.uuid4())+'.png'
-                    output_path = os.path.join('masked','POL',udi)
-                if label == 'MOL':
-                    udi = str(uuid.uuid4())+'.png'
-                    output_path = os.path.join('masked', 'MOL', udi)
-                print(output_path)
-                cv2.imwrite(output_path, output)
-                # if cv2.waitKey(0) & 0xFF == ord('q'):
-                
-                # exit()
-        
-        # if plot:
-        #     self.pol_plot(im,pol_points,output_boxes,img_path)
-        # return pol_points,output_boxes
-        return None
-    
     def check_inner(self,boxes):
         if type(boxes) is np.ndarray:
             boxes=boxes.tolist()
@@ -217,9 +118,48 @@ class Predictor:
                 pass
             to_remove_ind.append(ind)
         
-        return kpt
+        return kpt    
 
+    def predict(self,img_path,plot=False):
+        
+        im = cv2.imread(img_path) 
+        outputs = self.predictor(im)
+        
+        
+        pred_classes = outputs['instances'].pred_classes.to("cpu").numpy()
+        pred_boxes = outputs['instances'].pred_boxes.to("cpu")
+        scores = outputs['instances'].scores.to("cpu").numpy()
+        mask_array = outputs['instances'].pred_masks.to("cpu").numpy()
 
+        pol_points=[]
+        output_boxes = []
+        for i in mask_array:
+            polygons = Mask(i).polygons()
+            pol_points.append(polygons.points)
+
+        for box,label in zip(pred_boxes,pred_classes):
+            box = box.cpu().detach().numpy()
+            
+            # label = map_label[str(label)]
+            x1,y1,x2,y2 = box.astype('int')
+            output_boxes.append([label,x1,y1,x2,y2])
+
+        keep = self.nms(output_boxes,scores)
+        if len(keep)>0:
+            output_boxes= np.array(output_boxes)[keep]
+            pol_points = np.array(pol_points)[keep]
+            scores= np.array(scores)[keep]
+            
+        keep2 = self.check_inner(output_boxes)
+        if len(keep2) > 0:
+            output_boxes = np.array(output_boxes)[keep2]
+            mask_array = np.array(mask_array)[keep2]
+            pred_classes = np.array(pred_classes)[keep2]
+
+        if plot:
+            self.pol_plot(im,pol_points,output_boxes,img_path)
+        return pol_points,output_boxes
+    
     def pol_plot(self,im,pol_points,boxes,img_path):
         
         fig = plt.figure(figsize=(20,10))
@@ -254,22 +194,18 @@ class Predictor:
         img_name = img_path.split('/')[-1]
         os.makedirs('out_predict',exist_ok=True)
         cv2.imwrite('out_predict/'+img_name,im)
-
-import time   
+        
 if __name__ == '__main__':
-    weights = '/home/laanta/sagun/segmentation/output/model_jan3.pth'
+    weights = '/home/laanta/sagun/segmentation/output/model_jan2.pth'
     folder_path = '/home/laanta/sagun/yolo/inference/test'
     obj= Predictor(weights)
 
     for img in sorted(os.listdir(folder_path)):
         if '.png' in img:
             
-            # img = '/home/laanta/sagun/yolo/inference/test/20200214T061825969-1901-0x2.png'
-            
+            # img = '/home/laanta/sagun/segmentation/full_data/images/6c7accb8-f78a-4960-b68e-6106f11f36ff.png'
+            print(img)
             img_path = os.path.join(folder_path,img)
             print(img_path)
-            
             out =obj.predict(img_path,plot=True)
-           
             # exit()
-            
