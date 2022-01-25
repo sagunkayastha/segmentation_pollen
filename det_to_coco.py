@@ -5,6 +5,7 @@ import numpy as np
 
 from predict import Predictor
 
+
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -15,52 +16,52 @@ class NpEncoder(json.JSONEncoder):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
-class create_json:
 
-    def __init__(self,image_folder,weights):
+class create_json:
+    def __init__(self, image_folder, weights):
         self.output = {}
         self.image_folder = image_folder
         self.model = Predictor(weights)
-    
+
     def add_categories(self):
         categories = [
-        {
-            "supercategory": "ANOM",
-            "id": 2,
-            "name": "ANOM"
-        },
-        {
-            "supercategory": "OTHPAR",
-            "id": 1,
-            "name": "OTHPAR"
-        },
-        {
-            "supercategory": "MOL",
-            "id": 3,
-            "name": "MOL"
-        },
-        {
-            "supercategory": "POL",
-            "id": 4,
-            "name": "POL"
-        }
+            {
+                "supercategory": "ANOM",
+                "id": 2,
+                "name": "ANOM"
+            },
+            {
+                "supercategory": "OTHPAR",
+                "id": 1,
+                "name": "OTHPAR"
+            },
+            {
+                "supercategory": "MOL",
+                "id": 3,
+                "name": "MOL"
+            },
+            {
+                "supercategory": "POL",
+                "id": 4,
+                "name": "POL"
+            }
         ]
         return categories
-    
+
     def add_images(self):
-        id_=1
-        tmp_list=[]
+        id_ = 1
+        tmp_list = []
         cwd = os.getcwd()
         for file_ in os.listdir(self.image_folder):
             new_dict = {}
-            img_path = os.path.join(cwd,self.image_folder, file_)
+            img_path = os.path.join(cwd, self.image_folder, file_)
             im = cv2.imread(img_path)
-            height,width = im.shape[0],im.shape[1]
+            height,width = im.shape[0], im.shape[1]
             new_dict['height'] = height
             new_dict['width'] = width
             new_dict['id'] = id_
             new_dict['file_name'] = img_path  #imagepath
-            id_+= 1 
+            id_+ = 1 
             tmp_list.append(new_dict)
 
         return tmp_list
