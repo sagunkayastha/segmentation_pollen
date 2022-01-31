@@ -18,10 +18,11 @@ class NpEncoder(json.JSONEncoder):
 
 
 class create_json:
-    def __init__(self, image_folder, weights):
+    def __init__(self, image_folder, weights, output_filename):
         self.output = {}
         self.image_folder = image_folder
         self.model = Predictor(weights)
+        self.output_filename = output_filename
 
     def add_categories(self):
         categories = [
@@ -107,5 +108,6 @@ class create_json:
 
 
 model_path = '/home/laanta/sagun/segmentation/output/model_jan2.pth'
-obj = create_json('test', model_path)
+output_filename = 'result.json'
+obj = create_json('test', model_path, output_filename, output_filename)
 output = obj.run()
