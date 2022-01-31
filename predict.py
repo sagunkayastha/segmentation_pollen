@@ -163,37 +163,41 @@ class Predictor:
             # print(pol_tup)
             pco = pyclipper.PyclipperOffset()
             pco.AddPath(pol_tup, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
-            contours_list = pco.Execute(2.0)
-            
-            pol_points_offset.append(np.array(contours_list[0]))
+            contours_list = pco.Execute(2.5)
+
+            if len(contours_list) == 0:
+                pol_points_offset.append(pol_point[0])
+            else:
+                pol_points_offset.append(np.array(contours_list[0]))
             # print(contours_list)
 
-        self.pol_plot(im, pol_points_offset, output_boxes, img_path)
+        # self.pol_plot(im, pol_points_offset, output_boxes, img_path)
         # self.pol_plot(im, pol_points, output_boxes, img_path)
-        exit()
-        for mask, pred_class in zip(mask_array, pred_classes):
+        save_pol_mol = False
+        if save_pol_mol:
+            for mask, pred_class in zip(mask_array, pred_classes):
 
-            label = map_label[str(pred_class)]
-            if label == 'POL' or label == 'MOL':
-                # mask = mask
-                masked = cv2.bitwise_and(im, im, mask=mask.astype("uint8"))
-                tmp_ = self.remove_padding(masked)
-                output = self.pad_image(tmp_)
+                label = map_label[str(pred_class)]
+                if label == 'POL' or label == 'MOL':
+                    # mask = mask
+                    masked = cv2.bitwise_and(im, im, mask=mask.astype("uint8"))
+                    tmp_ = self.remove_padding(masked)
+                    output = self.pad_image(tmp_)
 
-                if label == 'POL':
-                    udi = str(uuid.uuid4())+'.png'
-                    output_path = os.path.join('masked', 'POL', udi)
-                if label == 'MOL':
-                    udi = str(uuid.uuid4())+'.png'
-                    output_path = os.path.join('masked', 'MOL', udi)
-                print(output_path)
-                cv2.imwrite(output_path, output)
+                    if label == 'POL':
+                        udi = str(uuid.uuid4())+'.png'
+                        output_path = os.path.join('masked', 'POL', udi)
+                    if label == 'MOL':
+                        udi = str(uuid.uuid4())+'.png'
+                        output_path = os.path.join('masked', 'MOL', udi)
+                    print(output_path)
+                    cv2.imwrite(output_path, output)
                 # if cv2.waitKey(0) & 0xFF == ord('q'):
 
         # if plot:
         #     self.pol_plot(im,pol_points,output_boxes,img_path)
         # return pol_points,output_boxes
-        return None
+        return pol_points, output_boxes
 
     def check_inner(self, boxes):
         if type(boxes) is np.ndarray:
@@ -220,8 +224,8 @@ class Predictor:
             ind = boxes.index(t_id)
             try:
                 kpt.remove(ind)
-            except:
-                pass
+            except Exception as e:
+                print(e)
             to_remove_ind.append(ind)
 
         return kpt
@@ -254,7 +258,6 @@ class Predictor:
             _ = cv2.rectangle(im, (x1, y1), (x2, y2),
                                   (255, 255, 255), thickness=1)
 
-       
         return 0
 
         # img_name = img_path.split('/')[-1]
@@ -273,6 +276,6 @@ if __name__ == '__main__':
 
             img_path = os.path.join(folder_path, img)
             print(img_path)
-            out = obj.predict(img_path, plot=True)
+            out = obj.predict(img_path, plot=False)
             # exit()
 
