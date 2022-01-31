@@ -194,9 +194,9 @@ class Predictor:
                     cv2.imwrite(output_path, output)
                 # if cv2.waitKey(0) & 0xFF == ord('q'):
 
-        # if plot:
-        #     self.pol_plot(im,pol_points,output_boxes,img_path)
-        # return pol_points,output_boxes
+        if plot:
+            self.pol_plot(im, pol_points, output_boxes, img_path)
+
         return pol_points, output_boxes
 
     def check_inner(self, boxes):
@@ -258,6 +258,9 @@ class Predictor:
             _ = cv2.rectangle(im, (x1, y1), (x2, y2),
                                   (255, 255, 255), thickness=1)
 
+        # img_name = img_path.split('/')[-1]
+        # os.makedirs('out_predict', exist_ok=True)
+        # cv2.imwrite('out_predict/'+img_name, im)
         return 0
 
         # img_name = img_path.split('/')[-1]
