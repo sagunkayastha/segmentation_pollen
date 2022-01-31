@@ -107,7 +107,8 @@ class create_json:
             json.dump(self.output, fp, cls=NpEncoder)
 
 
+image_folder = 'test'
 model_path = '/home/laanta/sagun/segmentation/output/model_jan2.pth'
 output_filename = 'result.json'
-obj = create_json('test', model_path, output_filename, output_filename)
+obj = create_json(image_folder, model_path, output_filename, output_filename)
 output = obj.run()
