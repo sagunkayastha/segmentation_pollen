@@ -9,6 +9,7 @@ segmentation_sessions/
 train_detectron/
 __pycache__
 full_data/
+c2l/
 #jupyter n
 .ipynb_checkpoints/
 

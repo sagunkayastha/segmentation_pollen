@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from predict import Predictor
-
+from utils.coco2lbl import CocoDatasetHandler
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -18,11 +18,12 @@ class NpEncoder(json.JSONEncoder):
 
 
 class create_json:
-    def __init__(self, image_folder, weights, output_filename):
+    def __init__(self, image_folder, weights, output_filename, label_me_output):
         self.output = {}
         self.image_folder = image_folder
         self.model = Predictor(weights)
         self.output_filename = output_filename
+        self.label_me_output = label_me_output
 
     def add_categories(self):
         categories = [
@@ -101,14 +102,24 @@ class create_json:
         self.output['annotations'] = []
         self.add_annotations()
         self.save_json()
+        self.convert_to_lableme()
 
     def save_json(self):
-        with open('result.json', 'w') as fp:
+        os.makedirs('Outputs/', exist_ok=True)
+        self.coco_file_path = os.path.join('Outputs', self.output_filename)
+        with open(self.coco_file_path, 'w') as fp:
             json.dump(self.output, fp, cls=NpEncoder)
+
+    def convert_to_lableme(self):
+        self.c2l = CocoDatasetHandler(self.coco_file_path, self.image_folder)
+        self.c2l.coco2labelme()
+        self.c2l.save_labelme(self.c2l.labelme.keys(), self.label_me_output)
 
 
 image_folder = 'test'
 model_path = '/home/laanta/sagun/segmentation/output/model_jan2.pth'
-output_filename = 'result.json'
-obj = create_json(image_folder, model_path, output_filename, output_filename)
+output_filename = 'coco.json'
+label_me_output = 'Outputs/det_to_labelme'
+obj = create_json(image_folder, model_path, output_filename, label_me_output)
 output = obj.run()
+
