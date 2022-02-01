@@ -131,6 +131,13 @@ class Predictor:
         scores = outputs['instances'].scores.to("cpu").numpy()
         mask_array = outputs['instances'].pred_masks.to("cpu").numpy()
 
+        # print(mask_array.astype(int))
+        # exit()
+        print((mask_array[0].astype(int)*255).shape)
+        cv2.imshow('asd',mask_array[0].astype(int)*255)
+        cv2.waitKey(0)
+
+        exit()
         pol_points=[]
         output_boxes = []
         for i in mask_array:
@@ -156,8 +163,31 @@ class Predictor:
             mask_array = np.array(mask_array)[keep2]
             pred_classes = np.array(pred_classes)[keep2]
 
+        # print(pol_points[0][0])
+        # exit()
+        # # pol_points.\
+        xp=[]
+        for pols in pol_points:
+            polygon = Polygon(pols[0])
+            print(list(polygon.centroid.coords))
+            
+            cnt =[]
+            cx, cy = list(polygon.centroid.coords)[0][1],list(polygon.centroid.coords)[0][1]
+            
+            
+            cnt_norm = pols[0] - [cx, cy]
+            
+            cnt_scaled = cnt_norm * 2
+            cnt_scaled = cnt_scaled + [cx, cy]
+            # print(cnt_scaled)
+            xp.append(cnt_scaled.astype(np.int32))
+        
+        xp = np.array(xp).reshape(-1,1)
+
+
+        
         if plot:
-            self.pol_plot(im,pol_points,output_boxes,img_path)
+            self.pol_plot(im,xp,output_boxes,img_path)
         return pol_points,output_boxes
     
     def pol_plot(self,im,pol_points,boxes,img_path):
@@ -190,13 +220,15 @@ class Predictor:
             pl= cv2.rectangle(im, (x1,y1), (x2,y2),(255, 255, 255), thickness=1)
             
     
-        
+        cv2.imshow('i',im)
+        cv2.waitKey(0)
+        exit()
         img_name = img_path.split('/')[-1]
         os.makedirs('out_predict',exist_ok=True)
         cv2.imwrite('out_predict/'+img_name,im)
         
 if __name__ == '__main__':
-    weights = '/home/laanta/sagun/segmentation/output/model_jan2.pth'
+    weights = '/home/laanta/sagun/segmentation/output/model_jan7.pth'
     folder_path = '/home/laanta/sagun/yolo/inference/test'
     obj= Predictor(weights)
 
@@ -208,4 +240,4 @@ if __name__ == '__main__':
             img_path = os.path.join(folder_path,img)
             print(img_path)
             out =obj.predict(img_path,plot=True)
-            # exit()
+            exit()
